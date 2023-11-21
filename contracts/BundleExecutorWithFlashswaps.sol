@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.11;
+pragma solidity >=0.8.11;
 // About 879376 gas with max optimizations (4294967295)
 // With transferrable ownership it takes about 967321 gas
 // With transferrable executorship it takes about 1043356 gas
@@ -7,7 +7,7 @@ pragma solidity 0.8.11;
 // Adding the fallback function it takes about 1099220 gas
 
 // TODO: comment out the following line when on prod
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 pragma experimental ABIEncoderV2;
 
@@ -59,7 +59,7 @@ contract BundleExecutorWithFlashswaps {
     bool private mutex; // mutex (didn't use boolean as it is the same gas usage)
     bytes4 private constant V3_SELECTOR = bytes4(keccak256(bytes("uniswapV3FlashCallback(uint256,uint256,bytes)")));
     IWETH private constant WETH =
-        IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2); // ethereum (wrapped ether)
+        IWETH(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619); // ethereum (wrapped ether)
     // IWETH private constant WETH = IWETH(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619); // polygon (wrapped ether)
     // IWETH private constant WETH = IWETH(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270); // polygon (wrapped matic)
     // IWETH private constant WETH = IWETH(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c); // BSC (wrapped BNB)
@@ -90,8 +90,8 @@ contract BundleExecutorWithFlashswaps {
         } else {
             (,,,_data) = abi.decode(_input[4:], (address, uint256, uint256, bytes));
         } // TODO: https://eips.ethereum.org/EIPS/eip-3156 (and dont forget the return part)
-
-        // console.log("we are in the callback: %s!!!", lastWethBalance);
+        return _data;
+        //console.log("we are in the callback: %s!!!", _data);
         require(mutex, "mutex err");
 
         (
@@ -103,30 +103,30 @@ contract BundleExecutorWithFlashswaps {
         // aahhh, I am arbing... (arbitrageour meme)
         for (uint256 i = 0; i < _targets.length; i++) {
             (bool _success, ) = _targets[i].call(_payloads[i]);
-            // console.log("Callback operation %s was %s", i, _success);
+            console.log("Callback operation %s was %s", i, _success);
             require(_success, "callX unsucessful");
         }
 
     }
+/*
+     function croDefiSwapCall(
+         address _sender,
+         uint256 _amount0,
+         uint256 _amount1,
+         bytes calldata _data
+     ) external {
+         _uniswapV2Call(_data);
+     }
 
-    // function croDefiSwapCall(
-    //     address _sender,
-    //     uint256 _amount0,
-    //     uint256 _amount1,
-    //     bytes calldata _data
-    // ) external {
-    //     _uniswapV2Call(_data);
-    // }
-
-    // function uniswapV2Call(
-    //     address _sender,
-    //     uint256 _amount0,
-    //     uint256 _amount1,
-    //     bytes calldata _data
-    // ) external {
-    //     _uniswapV2Call(_data);
-    // }
-    
+     function uniswapV2Call(
+         address _sender,
+         uint256 _amount0,
+         uint256 _amount1,
+         bytes calldata _data
+     ) external {
+        _uniswapV2Call(_data);
+     }
+ */   
     // be able to receive NFTs
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) 
         pure
@@ -137,9 +137,9 @@ contract BundleExecutorWithFlashswaps {
 
     
     function makeWeth(
-        address[] calldata _targets, bytes[] calldata _payloads
-        // address _firstTarget
-        // , bytes calldata _firstPayload // using calldata here instead of memory reduces ~3k of gas usage
+        address[] calldata _targets, bytes[] calldata _payloads,
+        address _firstTarget
+        , bytes calldata _firstPayload // using calldata here instead of memory reduces ~3k of gas usage
         , uint256 _ethAmountToCoinbase
         )
         external
@@ -150,16 +150,16 @@ contract BundleExecutorWithFlashswaps {
         uint lastWethBalance = WETH.balanceOf(address(this));
         for (uint256 i = 0; i < _targets.length; i++) {
             (bool _success,) = _targets[i].call(_payloads[i]);
-            // console.log("Callback operation %d", i);
+            console.log("Callback operation %d", i);
             require(_success, "callV unsucessful");
         }
-        // (bool _success, /*bytes memory res*/) = _firstTarget.call(_firstPayload);
+         (bool _success, bytes memory res) = _firstTarget.call(_firstPayload);
         // // // Get the revert message of the call and revert with it if the call failed
-        // // if (!_success) {
-        // //     string memory _revertMsg = _getRevertMsg(res);
-        // //     console.log("revert msg: %s", _revertMsg);
-        // // }
-        // require(_success, "callV unsucessful");
+        if (!_success) {
+             string memory _revertMsg = _getRevertMsg(res);
+             console.log("revert msg: %s", _revertMsg);
+         }
+         require(_success, "callV unsucessful");
 
         uint256 _wethBalanceAfter = WETH.balanceOf(address(this));
         require(
@@ -203,20 +203,20 @@ contract BundleExecutorWithFlashswaps {
     // /// @notice This is needed in order to get the human-readable revert message from a call
     // /// @param _returnData Response of the call
     // /// @return Revert message string
-    // function _getRevertMsg(bytes memory _returnData)
-    //     internal
-    //     pure
-    //     returns (string memory)
-    // {
+     function _getRevertMsg(bytes memory _returnData)
+         internal
+         pure
+         returns (string memory)
+     {
     //     // If the _res length is less than 68, then the transaction failed silently (without a revert message)
-    //     if (_returnData.length < 68) return "Transaction reverted silently";
+         if (_returnData.length < 68) return "Transaction reverted silently";
 
-    //     assembly {
-    //         // Slice the sighash.
-    //         _returnData := add(_returnData, 0x04)
-    //     }
-    //     return abi.decode(_returnData, (string)); // All that remains is the revert string
-    // }
+         assembly {
+             // Slice the sighash.
+             _returnData := add(_returnData, 0x04)
+         }
+         return abi.decode(_returnData, (string)); // All that remains is the revert string
+     }
 
     /**
      * @dev Transfers ownership of the contract to a new account (`newOwner`).

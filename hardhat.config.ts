@@ -32,10 +32,10 @@ export function getVerificationConfig(chain: keyof typeof chainIds): null | {
   apiKey : string,
   apiBaseUrl: string,
 } {
-  if (chain === "rinkeby") {
+  if (chain === "polygon-mainnet") {
     return {
-      apiKey : process.env.ETHERSCAN_API_KEY ?? "",
-      apiBaseUrl: "https://api-rinkeby.etherscan.io",
+      apiKey : process.env.POLYGONSCAN_API_KEY ?? "",
+      apiBaseUrl: "https://api.polygonscan.com",
     }
   }
   if (chain === "mainnet") {
@@ -93,8 +93,8 @@ const config: HardhatUserConfig = {
       },
       chainId: chainIds[forkForTesting],
     },
-    rinkeby: {
-      url: getChainRpcUrl('rinkeby'),
+    polygon: {
+      url: getChainRpcUrl('polygon-mainnet'),
       accounts: [process.env.PK_DEPLOYER ?? ""],
     },
     optimism: {

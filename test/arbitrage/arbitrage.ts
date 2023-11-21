@@ -2,13 +2,13 @@ import { formatEther } from "ethers/lib/utils";
 import { ethers, getChainId, network } from "hardhat";
 import { OpenSeaPoller } from "../../src/opensea_interactions/poll";
 import { getEthTotalPriceFromOrder } from "../../src/opensea_interactions/util";
-import { BAYC_COLLECTION_MAINNET, ZERO_ADDRESS } from "../constants/addresses";
+import { ENS_COLLECTION_MAINNET, ZERO_ADDRESS } from "../constants/addresses";
 import { sell } from "../looksrare/sell";
 import { buy } from "../opensea/buy";
 
 export const ETH_HOLDER = '0x02A522D98EC2D2c3bBe91AcC29ee7fD32ab880ab'; // has more than 72 ETH at block 15505947
 
-const collection_address = BAYC_COLLECTION_MAINNET;
+const collection_address = ENS_COLLECTION_MAINNET;
 
 
 export async function arbitrage_first_demo() {
